@@ -1,0 +1,6 @@
+{
+  "data_type": "cifar10",
+  "data_dir": "./data",
+  "target": "Cataract",
+  "num_class": 10
+}

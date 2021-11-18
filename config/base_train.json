@@ -1,0 +1,34 @@
+{
+  "gpu": "0",
+  "resume": false,
+
+  "total_epoch": 100,
+  "scheduler": "step",
+  "batch_size": 128,
+
+  "ddp": true,
+  "pin_memory": true,
+  "mixed_precision": true,
+  "num_workers": 8,
+
+  "train_prop" : 1.0,
+  "val_prop" : 1.0,
+
+  "patience": 1000,
+  "early_loss": true,
+  "save_epoch": 5,
+
+  "optimizer": "sgd",
+  "lr": 0.1,
+  "weight_decay": 1e-4,
+
+  "train_type": "naive",
+  "train_method": "merge",
+  "target_list": null,
+
+  "target": "voice_0.5",
+  "label_type": "voice",
+
+  "feature_type": "spec",
+  "window_func": "hann"
+}

@@ -1,0 +1,7 @@
+{
+  "ddp": false,
+  "tuning": false,
+  "num_trials": 10,
+  "cpus_per_trial": 4,
+  "gpus_per_trial": 1
+}
