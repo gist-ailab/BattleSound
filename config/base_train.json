@@ -9,7 +9,7 @@
   "ddp": true,
   "pin_memory": true,
   "mixed_precision": true,
-  "num_workers": 8,
+  "num_workers": 0,
 
   "train_prop" : 1.0,
   "val_prop" : 1.0,

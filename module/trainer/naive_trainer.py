@@ -35,6 +35,7 @@ def select_dataset(option, addon_list, tr_dataset, tr_transform, val_transform, 
 
 
 def accuracy(output, target, topk=(1,)):
+    topk = (1,)
     """Computes the accuracy over the k top predictions for the specified values of k"""
     with torch.no_grad():
         maxk = max(topk)
@@ -103,7 +104,6 @@ def train(option, rank, epoch, model_list, addon_list, criterion_list, optimizer
     mean_loss_cls = 0.
     mean_loss_channel = 0.
     mean_acc1 = 0.
-    mean_acc5 = 0.
 
     # Freeze !
     train_method = option.result['train']['train_method']
@@ -149,19 +149,16 @@ def train(option, rank, epoch, model_list, addon_list, criterion_list, optimizer
             mean_loss_cls += reduce_tensor(loss_cls.data, num_gpu).item()
             mean_loss_channel += reduce_tensor(loss_channel.data, num_gpu).item()
             mean_acc1 += reduce_tensor(acc_result[0], num_gpu)
-            mean_acc5 += reduce_tensor(acc_result[1], num_gpu)
 
         else:
             mean_loss_cls += loss_cls.item()
             mean_loss_channel += loss_channel.item()
             mean_acc1 += acc_result[0]
-            mean_acc5 += acc_result[1]
         
         del output, loss_cls, loss_channel
 
     # Train Result
     mean_acc1 /= len(tr_loader)
-    mean_acc5 /= len(tr_loader)
     mean_loss_cls /= len(tr_loader)
     mean_loss_channel /= len(tr_loader)
 
@@ -192,12 +189,11 @@ def train(option, rank, epoch, model_list, addon_list, criterion_list, optimizer
 
     if (rank == 0) or (rank == 'cuda'):
         # Logging
-        print('Epoch-(%d/%d) - tr_ACC@1: %.2f, tr_ACC@5-%.2f, tr_loss_cls:%.3f, tr_loss_channel:%.3f' %(epoch, option.result['train']['total_epoch'], \
-                                                                            mean_acc1, mean_acc5, mean_loss_cls, mean_loss_channel))
+        print('Epoch-(%d/%d) - tr_ACC@1: %.2f, tr_loss_cls:%.3f, tr_loss_channel:%.3f' %(epoch, option.result['train']['total_epoch'], \
+                                                                            mean_acc1, mean_loss_cls, mean_loss_channel))
         neptune['result/tr_loss_cls'].log(mean_loss_cls)
         neptune['result/tr_loss_channel'].log(mean_loss_channel)
         neptune['result/tr_acc1'].log(mean_acc1)
-        neptune['result/tr_acc5'].log(mean_acc5)
         
         if train_method != 'base' and train_method != 'auxiliary':
             neptune['result/attn_selection'].log(attn_selection)
@@ -234,7 +230,6 @@ def validation(option, rank, epoch, model_list, addon_list, criterion_list, mult
     mean_loss_cls = 0.
     mean_loss_channel = 0.
     mean_acc1 = 0.
-    mean_acc5 = 0.
 
     with torch.no_grad():
         for iter, val_data in enumerate(tqdm(val_loader)):                
@@ -249,13 +244,11 @@ def validation(option, rank, epoch, model_list, addon_list, criterion_list, mult
                 mean_loss_cls += reduce_tensor(loss_cls.data, num_gpu).item()
                 mean_loss_channel += reduce_tensor(loss_channel.data, num_gpu).item()
                 mean_acc1 += reduce_tensor(acc_result[0], num_gpu)
-                mean_acc5 += reduce_tensor(acc_result[1], num_gpu)
 
             else:
                 mean_loss_cls += loss_cls.item()
                 mean_loss_channel += loss_channel.item()
                 mean_acc1 += acc_result[0]
-                mean_acc5 += acc_result[1]
 
     # Remove Un-neccessary Memory
     del output, loss_cls, loss_channel
@@ -263,21 +256,19 @@ def validation(option, rank, epoch, model_list, addon_list, criterion_list, mult
     
     # Train Result
     mean_acc1 /= len(val_loader)
-    mean_acc5 /= len(val_loader)
     mean_loss_cls /= len(val_loader)
     mean_loss_channel /= len(val_loader)
 
     # Logging
     if (rank == 0) or (rank == 'cuda'):
-        print('Epoch-(%d/%d) - val_ACC@1: %.2f, val_ACC@5-%.2f, val_loss_cls:%.3f, val_loss_channel:%.3f' % (epoch, option.result['train']['total_epoch'], \
-                                                                                mean_acc1, mean_acc5, mean_loss_cls, mean_loss_channel))
+        print('Epoch-(%d/%d) - val_ACC@1: %.2f, val_loss_cls:%.3f, val_loss_channel:%.3f' % (epoch, option.result['train']['total_epoch'], \
+                                                                                mean_acc1, mean_loss_cls, mean_loss_channel))
         neptune['result/val_loss_cls'].log(mean_loss_cls)
         neptune['result/val_loss_channel'].log(mean_loss_channel)
         neptune['result/val_acc1'].log(mean_acc1)
-        neptune['result/val_acc5'].log(mean_acc5)
         neptune['result/epoch'].log(epoch)
 
-    result = {'acc1':mean_acc1, 'acc5':mean_acc5, 'val_loss':mean_loss_cls + mean_loss_channel}
+    result = {'acc1':mean_acc1, 'val_loss':mean_loss_cls + mean_loss_channel}
 
     if option.result['tune']['tuning']:
         tune.report(loss=(mean_loss_cls + mean_loss_channel), accuracy=mean_acc1)

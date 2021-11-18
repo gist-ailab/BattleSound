@@ -66,9 +66,9 @@ if __name__=='__main__':
     
     # Base
     if args.exp == 0:
-        server = 'lecun'
-        save_dir = '/data/sung/checkpoint/battlesound'
-        data_dir = '/data/sung/dataset/dongwoon'
+        server = 'gyuri'
+        save_dir = '/data_2/sung/checkpoint/battlesound'
+        data_dir = '/data_2/sung/dataset/dongwoon'
 
         exp_name = 'base'
         start = 0
@@ -81,12 +81,12 @@ if __name__=='__main__':
         val_prop = 1. 
         
         batch_size = 256
-        mixed_precision = True
+        mixed_precision = False
         ddp = False
         
         num_per_gpu = 1
         
-        gpus = ['0','1','2','5','6']
+        gpus = ['6', '7']
         
         # Selection
         feature_list = ['melspec', 'raw_signal']
