@@ -82,11 +82,11 @@ if __name__=='__main__':
         
         batch_size = 256
         mixed_precision = True
-        ddp = True
+        ddp = False
         
         num_per_gpu = 1
         
-        gpus = ['0,1', '2,3']
+        gpus = ['0','1','2','5','6']
         
         # Selection
         feature_list = ['melspec', 'raw_signal']
@@ -108,7 +108,7 @@ if __name__=='__main__':
                                                 'scheduler': 'anealing',
                                                 'feature_type': feature,
                                                 'pretrained_imagenet': True,
-                                                'target': '%s_%s'%(label, time)
+                                                'target': 'label_%s'%(time)
                                             },
                                     'network': 
                                             {

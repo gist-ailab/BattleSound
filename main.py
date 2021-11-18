@@ -308,10 +308,6 @@ if __name__=='__main__':
 
             option.result['train']['gpu'] = gpu
 
-    # Data Directory
-    if not resume:
-        option.result['data']['data_dir'] = os.path.join(option.result['data']['data_dir'], option.result['data']['data_type'])
-
     # GPU
     os.environ["CUDA_VISIBLE_DEVICES"] = option.result['train']['gpu']
     num_gpu = len(option.result['train']['gpu'].split(','))
