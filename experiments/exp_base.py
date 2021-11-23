@@ -122,6 +122,64 @@ if __name__=='__main__':
                                     })
                     ix += 1
 
+    elif args.exp == 1:
+        server = 'toast'
+        save_dir = '/data/sung/checkpoint/battlesound'
+        data_dir = '/data/sung/dataset/dongwoon'
+
+        exp_name = 'base-toast'
+        start = 0
+        ix = 0
+        comb_list = []
+        epoch = 30
+
+
+        train_prop = 1.
+        val_prop = 1. 
+        
+        batch_size = 256
+        mixed_precision = False
+        ddp = False
+        
+        num_per_gpu = 1
+        
+        gpus = ['0','1','2','3','4','5','6','7']
+        
+        # Selection
+        feature_list = ['melspec', 'raw_signal']
+        label_list = ['voice', 'event']
+        time_list = ['0.5', '2.0', '4.0', '8.0']
+        
+        for time in time_list:
+            for label in label_list:    
+                for feature in feature_list:
+                    if feature == 'melspec':
+                        network = 'conv2d'
+                    else:
+                        network = 'conv1d'
+                        
+                    comb_list.append({'train': 
+                                            {
+                                                'train_method': 'base',
+                                                'lr': 1e-3,
+                                                'scheduler': 'anealing',
+                                                'feature_type': feature,
+                                                'pretrained_imagenet': True,
+                                                'target': 'label_%s'%(time)
+                                            },
+                                    'network': 
+                                            {
+                                                'network_type': network
+                                            },
+                                    'data':
+                                            {   'data_type': label,
+                                                'num_class': 2
+                                            },
+                                    'index': ix
+                                    })
+                    ix += 1
+
+
     else:
         raise('Select Proper Experiment Number')
 
