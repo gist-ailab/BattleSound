@@ -133,6 +133,11 @@ dmypy.json
 *.pkl
 *.pptx
 
+*.wav
+*.npy
+*.mp3
+*.flac
+
 old
 .neptune
 sample
