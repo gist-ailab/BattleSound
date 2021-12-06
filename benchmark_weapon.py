@@ -4,6 +4,7 @@ import numpy as np
 import scipy.io.wavfile
 from glob import glob
 # https://github.com/gabemagee/gunshot_detection/tree/master/raspberry_pi
+import os
 
 AUDIO_RATE = 44100
 NUMBER_OF_AUDIO_CHANNELS = 1
@@ -41,31 +42,6 @@ def convert_audio_to_spectrogram(data):
     return spectrogram
 
 
-# Load Data
-voice_list = glob('data/sample/voice/*.npz')
-
-ind_list_0, ind_list_1 = [], []
-for ix in range(20):
-    voice = dict(np.load(voice_list[ix]))
-    
-    for ix2 in range(len(voice['label'])):
-        if voice['label'][ix2] == 0:
-            ind_list_0.append((ix, ix2))
-        elif voice['label'][ix2] == 1: 
-            ind_list_1.append((ix, ix2))
-        else:
-            pass
-
-id, ix = ind_list_1[2]
-voice = dict(np.load(voice_list[id]))
-wav_imp = voice['audio'][ix]
-wav = np.zeros(32000)
-wav[:len(wav_imp)] = wav_imp
-wav = wav.astype('int16')
-scipy.io.wavfile.write('temp/temp.wav', rate=16000, data=wav)
-
-wav, sr = librosa.load('temp/temp.wav', sr=16000)
-
 # Load Model
 # Loads 44100 x 1 Keras model from H5 file
 interpreter_1 = tf.lite.Interpreter(model_path = "checkpoint/1D.tflite")
@@ -94,35 +70,64 @@ input_details_3 = interpreter_3.get_input_details()
 output_details_3 = interpreter_3.get_output_details()
 input_shape_3 = input_details_3[0]['shape']
 
-# Post-processes the microphone data
-wav_new = librosa.resample(y = wav, orig_sr=16000, target_sr = 22050)
+# Load Data
+data_dir = '/data/sung/dataset/dongwoon'
+data_type = 'event' #event, voice
+
+# Label List
+label_list = dict(np.load(os.path.join(data_dir, 'val_0.5', 'meta_dict_%s_pre.npz'%data_type)))
+
+positive_list = label_list['1'].tolist()
+negative_list = label_list['0'].tolist() + \
+                        label_list['-1'].tolist()
+
+file_index = positive_list + negative_list
+label_list = [1] * len(positive_list) + [0] * len(negative_list)
 
 
-# Passes an audio sample of an appropriate format into the model for inference
-processed_data_1 = wav_new
-processed_data_1 = processed_data_1.reshape(input_shape_1)
+# Index
+for index in range(len(file_index)):
+    name, ix = file_index[index]
 
-HOP_LENGTH = 345 * 2
-processed_data_2 = convert_audio_to_spectrogram(data = wav_new)
-processed_data_2 = processed_data_2.reshape(input_shape_2)
+    file = dict(np.load(os.path.join(data_dir, 'val_0.5', data_type, name)))
+    signal, label = file['audio'][int(ix)], int(file['label'][int(ix)])
     
-HOP_LENGTH = 345
-processed_data_3 = convert_audio_to_spectrogram(data = wav_new)
-processed_data_3 = processed_data_3.reshape(input_shape_3)
+    wav = np.zeros(32000)
+    wav[:len(signal)] = signal
+    wav = wav.astype('int16')
+    scipy.io.wavfile.write('temp/temp.wav', rate=16000, data=wav)
 
-# Performs inference with the instantiated TensorFlow Lite models
-interpreter_1.set_tensor(input_details_1[0]['index'], processed_data_1)
-interpreter_1.invoke()
-probabilities_1 = interpreter_1.get_tensor(output_details_1[0]['index'])
+    wav, sr = librosa.load('temp/temp.wav', sr=16000)
+    wav_new = librosa.resample(y = wav, orig_sr=16000, target_sr = 22050)
 
-interpreter_2.set_tensor(input_details_2[0]['index'], processed_data_2)
-interpreter_2.invoke()
-probabilities_2 = interpreter_2.get_tensor(output_details_2[0]['index'])
 
-interpreter_3.set_tensor(input_details_3[0]['index'], processed_data_3)
-interpreter_3.invoke()
-probabilities_3 = interpreter_3.get_tensor(output_details_3[0]['index'])
+    # Passes an audio sample of an appropriate format into the model for inference
+    processed_data_1 = wav_new
+    processed_data_1 = processed_data_1.reshape(input_shape_1)
 
-print("The 44100 x 1 model-predicted probability values: " + str(probabilities_1[0]))
-print("The 128 x 64 model-predicted probability values: " + str(probabilities_2[0]))
-print("The 128 x 128 model-predicted probability values: " + str(probabilities_3[0]))
+    HOP_LENGTH = 345 * 2
+    processed_data_2 = convert_audio_to_spectrogram(data = wav_new)
+    processed_data_2 = processed_data_2.reshape(input_shape_2)
+        
+    HOP_LENGTH = 345
+    processed_data_3 = convert_audio_to_spectrogram(data = wav_new)
+    processed_data_3 = processed_data_3.reshape(input_shape_3)
+
+
+    # Performs inference with the instantiated TensorFlow Lite models
+    interpreter_1.set_tensor(input_details_1[0]['index'], processed_data_1)
+    interpreter_1.invoke()
+    probabilities_1 = interpreter_1.get_tensor(output_details_1[0]['index'])
+
+    interpreter_2.set_tensor(input_details_2[0]['index'], processed_data_2)
+    interpreter_2.invoke()
+    probabilities_2 = interpreter_2.get_tensor(output_details_2[0]['index'])
+
+    interpreter_3.set_tensor(input_details_3[0]['index'], processed_data_3)
+    interpreter_3.invoke()
+    probabilities_3 = interpreter_3.get_tensor(output_details_3[0]['index'])
+
+    print("The 44100 x 1 model-predicted probability values: " + str(probabilities_1[0]))
+    print("The 128 x 64 model-predicted probability values: " + str(probabilities_2[0]))
+    print("The 128 x 128 model-predicted probability values: " + str(probabilities_3[0]))
+    print(label)
