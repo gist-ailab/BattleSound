@@ -2,19 +2,21 @@ import numpy as np
 
 if __name__=='__main__':
     data_dir = ''
-    label_list = dict(np.load(data_dir, 'val_0.5', 'meta_dict_%s_pre.npz'%option.result['data']['data_type'])))
+    data_type = ''
+    
+    # Label List
+    label_list = dict(np.load(data_dir, 'val_0.5', 'meta_dict_%s_pre.npz'%data_type))
 
-self.positive_list = self.label_list['1'].tolist()
-self.negative_list = self.label_list['0'].tolist() + \
-                        self.label_list['-1'].tolist()
+    positive_list = label_list['1'].tolist()
+    negative_list = label_list['0'].tolist() + \
+                            label_list['-1'].tolist()
 
-self.file_index = self.positive_list + self.negative_list
-self.label_list = [1] * len(self.positive_list) + [0] * len(self.negative_list)
+    file_index = positive_list + negative_list
+    label_list = [1] * len(positive_list) + [0] * len(negative_list)
+    
+    # Index
+    for index in range(len(file_index)):
+        name, ix = file_index[index]
 
-
-
-
-name, ix = self.file_index[index]
-
-file = dict(np.load(os.path.join(self.option.result['data']['data_dir'], 'val_0.5', self.option.result['data']['data_type'], name)))
-signal, label = file['audio'][int(ix)], int(file['label'][int(ix)])
+        file = dict(np.load(data_dir, 'val_0.5', data_type, name))
+        signal, label = file['audio'][int(ix)], int(file['label'][int(ix)])
