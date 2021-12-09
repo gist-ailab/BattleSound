@@ -357,12 +357,15 @@ negative_list = label_list['0'].tolist() + \
 file_index = positive_list + negative_list
 label_list = [1] * len(positive_list) + [0] * len(negative_list)
 
-threshold_list = [0.5, 0.6, 0.7, 0.8, 0.9]
+threshold_list = [0.6]
 
 # Index
 for threshold in threshold_list:
     correct = 0
     wrong = 0
+    
+    pred_list = []
+    label_list = []
     
     for index in tqdm(range(len(file_index))):
         name, ix = file_index[index]
@@ -378,15 +381,20 @@ for threshold in threshold_list:
         else:
             pred = 0
         
-        if pred == label:
-            correct += 1
-        else: 
-            wrong += 1
-        
-        accuracy = correct / (correct + wrong)
+        pred_list.append(pred)
+        label_list.append(label)        
     
-    print(threshold, accuracy)
-    
+    # Performance
+    from sklearn.metrics import accuracy_score, precision_score, recall_score
+    accuracy = accuracy_score(label_list, pred_list)
+    precision = precision_score(label_list, pred_list)
+    recall = recall_score(label_list, pred_list)
+    print('Accuracy %.4f' %accuracy)
+    print('Precision %.4f' %precision)
+    print('Recall %.4f' %recall)
+
+
+
     # Threshold 0.9 -> 0.50775392831467
     # Threshold 0.8 -> 0.56033685940228  
     # Threshold 0.7 -> 0.607168532402177

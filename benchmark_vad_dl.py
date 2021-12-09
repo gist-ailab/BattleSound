@@ -25,8 +25,8 @@ file_index = positive_list + negative_list
 label_list = [1] * len(positive_list) + [0] * len(negative_list)
 
 # Index
-correct = 0
-wrong = 0
+pred_list = []
+label_list = []
 for index in tqdm(range(len(file_index))):
     name, ix = file_index[index]
 
@@ -47,15 +47,21 @@ for index in tqdm(range(len(file_index))):
     # speech regions (as `pyannote.core.Timeline` instance)
     speech = binarize.apply(sad_scores, dimension=1)
     if len(speech) > 0:
-        pred = 1
+        pred_list.append(1)
     else: 
-        pred = 0
+        pred_list.append(0)
+    
+    label_list.append(label)
+    
 
-    if pred == label:
-        correct += 1
-    else: 
-        wrong += 1
-        
-print(correct / (correct + wrong))
+# Performance
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+accuracy = accuracy_score(label_list, pred_list)
+precision = precision_score(label_list, pred_list)
+recall = recall_score(label_list, pred_list)
+print('Accuracy %.4f' %accuracy)
+print('Precision %.4f' %precision)
+print('Recall %.4f' %recall)
 
 # 0.8743966314059772
+
