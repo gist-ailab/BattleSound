@@ -85,11 +85,9 @@ if __name__=='__main__':
     import numpy as np
     
     model = Conv1DNet()
-    model_parameters = filter(lambda p: p.requires_grad, model.parameters())
-    params = sum([np.prod(p.size()) for p in model_parameters])
+    params = sum([np.prod(p.size()) for p in model.parameters()])
     print(params)
     
     model = Conv2DNet('mel_spec')
-    model_parameters = filter(lambda p: p.requires_grad, model.parameters())
-    params = sum([np.prod(p.size()) for p in model_parameters])
+    params = sum([np.prod(p.size()) for p in model.parameters()])
     print(params)
