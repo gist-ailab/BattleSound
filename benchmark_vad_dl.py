@@ -10,6 +10,12 @@ from tqdm import tqdm
 # Load Model
 sad = torch.hub.load('pyannote/pyannote-audio', 'sad_ami')
 
+# number of parameters
+model = sad.model_
+model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+params = sum([np.prod(p.size()) for p in model_parameters])
+
+
 # Load Data
 data_dir = '/data/sung/dataset/dongwoon'
 data_type = 'voice' #event, voice
@@ -27,6 +33,7 @@ label_list = [1] * len(positive_list) + [0] * len(negative_list)
 # Index
 pred_list = []
 label_list = []
+
 for index in tqdm(range(len(file_index))):
     name, ix = file_index[index]
 
