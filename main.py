@@ -29,6 +29,18 @@ from utility.distributed import apply_gradient_allreduce, reduce_tensor
 import pathlib
 import random
 
+
+def set_random_seed(seed_value, use_cuda=True):
+    np.random.seed(seed_value) # cpu vars
+    torch.manual_seed(seed_value) # cpu  vars
+    random.seed(seed_value) # Python
+    os.environ['PYTHONHASHSEED'] = str(seed_value) # Python hash buildin
+    if use_cuda: 
+        torch.cuda.manual_seed(seed_value)
+        torch.cuda.manual_seed_all(seed_value) # gpu vars
+        torch.backends.cudnn.deterministic = True  #needed
+        torch.backends.cudnn.benchmark = False
+
 def setup(rank, world_size, master_port):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = master_port
@@ -38,6 +50,7 @@ def setup(rank, world_size, master_port):
 
 def cleanup():
     dist.destroy_process_group()
+
 
 def main(rank, option, resume, save_folder, log, master_port):
     # Basic Options
@@ -53,6 +66,7 @@ def main(rank, option, resume, save_folder, log, master_port):
         ddp = option.result['train']['ddp']
     else:
         ddp = False
+
 
     scheduler_list = option.result['train']['scheduler']
     batch_size, pin_memory = option.result['train']['batch_size'], option.result['train']['pin_memory']
@@ -83,8 +97,8 @@ def main(rank, option, resume, save_folder, log, master_port):
                                mode = mode
                                )
 
-        neptune_id = str(run.__dict__['_short_id'])
-        option.result['meta']['neptune_id'] = neptune_id
+        # neptune_id = str(run.__dict__['_short_id'])
+        # option.result['meta']['neptune_id'] = neptune_id
 
         exp_name, exp_num = save_folder.split('/')[-2], save_folder.split('/')[-1]
         run['exp_name'] = exp_name
@@ -318,7 +332,9 @@ if __name__=='__main__':
         ddp = False
 
     master_port = str(random.randint(100,10000))
-
+    
+    set_random_seed(option.result['train']['seed'])
+        
     if ddp:
         mp.spawn(main, args=(option, resume, save_folder, args.log, master_port, ), nprocs=num_gpu, join=True)
     else:

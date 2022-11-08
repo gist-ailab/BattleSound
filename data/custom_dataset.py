@@ -71,6 +71,9 @@ class SoundLoader(Dataset):
                 normalized=True,
                 power=2
             )
+            
+            # self.transform_func = self.transform_func.cuda()
+            
 
         elif self.option.result['train']['feature_type'] == 'melspec':
             self.transform_func = torchaudio.transforms.Spectrogram(
@@ -83,10 +86,12 @@ class SoundLoader(Dataset):
             )
 
             self.melscale = torchaudio.transforms.MelScale(
-                n_mels=40,
+                n_mels=41,
                 f_max=8000,
-                f_min =300
+                f_min =300,
+                n_stft=257,
             )
+
 
         elif self.option.result['train']['feature_type'] == 'raw_signal':
             self.transform_func = None
@@ -111,11 +116,11 @@ class SoundLoader(Dataset):
         x_data = torch.Tensor(x_data)
         x_data = x_data.unsqueeze(dim=0)
 
+        
         # Transform
         if self.transform:
-            self.transform_func = self.transform_func.cuda()
-            x_data = self.transform_func(x_data.cuda())
-            x_data = x_data.cpu().detach()
+            x_data = self.transform_func(x_data)
+                        
             if self.option.result['train']['feature_type'] == 'melspec':
                 x_data = self.melscale(x_data)
                 x_data = torch.log(x_data + 1e-4)

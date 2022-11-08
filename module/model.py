@@ -22,7 +22,7 @@ class Conv2DNet(nn.Module):
             nn.BatchNorm2d(40),
             nn.ReLU())
 
-        self.fc1 = nn.Linear(1200, 256)
+        self.fc1 = nn.Linear(1440, 256)
         self.fc2 = nn.Linear(256, self.n_classes)
 
     def forward(self, x):
