@@ -5,7 +5,7 @@ import math
 from torch.nn import init
 
 class Conv2DNet(nn.Module):
-    def __init__(self, feature_type):
+    def __init__(self, feature_type, duration):
         super(Conv2DNet, self).__init__()
         self.n_classes = 2
         self.stride = (4, 2) if feature_type == 'spec' else 2
@@ -22,17 +22,32 @@ class Conv2DNet(nn.Module):
             nn.BatchNorm2d(40),
             nn.ReLU())
 
-        self.fc1 = nn.Linear(1440, 256)
+        if duration == 0.5:
+            in_channel = 1440
+        elif duration == 2.0:
+            in_channel = 5040
+        elif duration == 4.0:
+            in_channel = 9840
+        elif duration == 8.0:
+            in_channel = 19440
+        else:
+            raise('Error!')
+        
+        self.fc1 = nn.Linear(in_channel, 256)
         self.fc2 = nn.Linear(256, self.n_classes)
 
-    def forward(self, x):
+    def forward(self, x, gradcam=False):
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)
+        out_imp = out
         out = out.reshape(out.size(0), -1)
         out = self.fc1(out)
         out = self.fc2(out)
-        return out
+        if gradcam:
+            return out, out_imp
+        else:
+            return out
 
 
 class Conv1DNet(nn.Module):

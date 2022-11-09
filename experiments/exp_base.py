@@ -91,10 +91,10 @@ if __name__=='__main__':
         # Selection
         feature_list = ['melspec', 'raw_signal']
         label_list = ['voice', 'event']
-        time_list = ['0.5']
+        duration_list = [0.5]
         seed_list = [0]
         
-        for time in time_list:
+        for duration in duration_list:
             for label in label_list:    
                 for feature in feature_list:
                     for seed in seed_list:
@@ -111,7 +111,7 @@ if __name__=='__main__':
                                                     'feature_type': feature,
                                                     'seed': seed,
                                                     'pretrained_imagenet': True,
-                                                    'target': 'label_%s'%(time),
+                                                    'duration': duration,
                                                 },
                                         'network': 
                                                 {
@@ -152,10 +152,10 @@ if __name__=='__main__':
         # Selection
         feature_list = ['melspec']
         label_list = ['voice', 'event']
-        time_list = ['2.0', '4.0', '8.0']
+        duration_list = [2.0, 4.0, 8.0]
         seed_list = [0]
         
-        for time in time_list:
+        for duration in duration_list:
             for label in label_list:    
                 for feature in feature_list:
                     for seed in seed_list:
@@ -172,7 +172,7 @@ if __name__=='__main__':
                                                     'feature_type': feature,
                                                     'seed': seed,
                                                     'pretrained_imagenet': True,
-                                                    'target': 'label_%s'%(time)
+                                                    'duration': duration,
                                                 },
                                         'network': 
                                                 {

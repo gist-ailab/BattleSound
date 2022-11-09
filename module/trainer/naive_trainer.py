@@ -9,6 +9,7 @@ import torch.distributed as dist
 from copy import deepcopy
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
+from visualize import gradcam
 
 # Utility
 def select_dataset(option, addon_list, tr_dataset, tr_transform, val_transform, rank):
@@ -53,7 +54,7 @@ def accuracy(output, target, topk=(1,)):
         return res
 
 
-def forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=True, epoch=0, multi_gpu=False):
+def forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=True, epoch=0, multi_gpu=False, gradcam=False):
     train_method = option.result['train']['train_method']
         
     if epoch == 0:
@@ -61,38 +62,13 @@ def forward_single(option, input, label, model_list, addon_list, iter, rank, cri
     else:
         save = False
         
-    if train_method == 'base' or train_method == 'auxiliary':
-        output = model_list[0](input)
-        loss_cls = criterion_list[0](output, label)
-        loss_channel = torch.tensor(0.).to(rank)
-        
-    elif train_method == 'selection':
-        output, output_ori_list = model_list[0](input, iter, rank, train, save)
-        
-        loss_part = 0.
-        for out in output_ori_list:
-            loss_part += criterion_list[0](out, label)
-        loss_part /= len(output_ori_list)
-
-        # Total Loss
-        loss_cls = (criterion_list[0](output, label) * 0.7 + loss_part * 0.3)
-        loss_channel = torch.tensor(0.).to(rank)
-
-    elif train_method == 'merge':
-        output, output_ori_list = model_list[0](input, iter, rank, train, save)
-        
-        loss_part = 0.
-        for out in output_ori_list:
-            loss_part += criterion_list[0](out, label)
-        loss_part /= len(output_ori_list)
-
-        # Total Loss
-        loss_cls = (criterion_list[0](output, label) * 0.7 + loss_part * 0.3)
-        loss_channel = torch.tensor(0.).to(rank)
-
+    if gradcam:
+        output, output_grad = model_list[0](input)
     else:
-        raise('Select Proper Train Methods')    
-
+        output = model_list[0](input)
+        
+    loss_cls = criterion_list[0](output, label)
+    loss_channel = torch.tensor(0.).to(rank)
     return output, loss_cls, loss_channel
 
 
@@ -209,22 +185,13 @@ def train(option, rank, epoch, model_list, addon_list, criterion_list, optimizer
     return save_module
 
 
-def validation(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, val_loader, scaler, neptune):
+def validation(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, val_loader, scaler, neptune, gradcam=False):
     # GPU
     num_gpu = len(option.result['train']['gpu'].split(','))
         
     # Freeze !
     train_method = option.result['train']['train_method']
-    if train_method == 'base':
-        model_list[0].eval()
-    elif train_method == 'selection':
-        model_list[0].eval()
-    elif train_method == 'merge':
-        model_list[0].eval()
-    elif train_method == 'auxiliary':
-        model_list[0].eval()
-    else:
-        raise('Select Proper Train Method')
+    model_list[0].eval()
     
     # For Log
     mean_loss_cls = 0.
@@ -236,7 +203,7 @@ def validation(option, rank, epoch, model_list, addon_list, criterion_list, mult
             input, label = val_data
             input, label = input.to(rank), label.to(rank)
 
-            output, loss_cls, loss_channel = forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=False, epoch=epoch, multi_gpu=multi_gpu)
+            output, loss_cls, loss_channel = forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=False, epoch=epoch, multi_gpu=multi_gpu, gradcam=gradcam)
 
             acc_result = accuracy(output, label, topk=(1, 5))
 

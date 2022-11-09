@@ -37,7 +37,7 @@ class model_manager(object):
         if self.option.result['network']['network_type'] == 'conv1d':
             self.model = Conv1DNet()
         elif self.option.result['network']['network_type'] == 'conv2d':
-            self.model = Conv2DNet(self.option.result['train']['feature_type'])
+            self.model = Conv2DNet(self.option.result['train']['feature_type'], duration=self.option.result['train']['duration'])
         else:
             raise('Select Proper Network Type')
         

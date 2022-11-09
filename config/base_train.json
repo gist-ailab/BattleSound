@@ -26,7 +26,8 @@
   "train_method": "merge",
   "target_list": null,
 
-  "target": "voice_0.5",
+  "seed": 0,
+  "duration": 0.5,
   "label_type": "voice",
 
   "feature_type": "spec",

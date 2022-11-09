@@ -22,8 +22,10 @@ class SoundLoader(Dataset):
 
         # Positive and Negative Sample
         self.mode = mode
+        self.duration = option.result['train']['duration']
+        
         if mode == 'train':
-            self.label_list = dict(np.load(os.path.join(option.result['data']['data_dir'], option.result['train']['target'], 'meta_dict_%s.npz'%option.result['data']['data_type'])))
+            self.label_list = dict(np.load(os.path.join(option.result['data']['data_dir'], 'label_%.1f' %option.result['train']['duration'],'meta_dict_%s.npz'%option.result['data']['data_type'])))
             self.positive_list = self.label_list['1'].tolist()
 
             self.num_0 = len(self.label_list['0'])
@@ -101,16 +103,24 @@ class SoundLoader(Dataset):
             raise ValueError
 
     def __getitem__(self, index):
-        self.file_index = self.positive_list + self.negative_list
-        self.label_list = [1] * len(self.positive_list) + [0] * len(self.negative_list)
-
-        name, ix = self.file_index[index]
+        name, ix = self.file_index[index]            
         if self.mode == 'train':
-            file = dict(np.load(os.path.join(self.option.result['data']['data_dir'], self.option.result['train']['target'], self.option.result['data']['data_type'], name)))
+            file = dict(np.load(os.path.join(self.option.result['data']['data_dir'], 'label_%.1f' %self.option.result['train']['duration'], self.option.result['data']['data_type'], name)))
         else:
             file = dict(np.load(os.path.join(self.option.result['data']['data_dir'], 'val_0.5', self.option.result['data']['data_type'], name)))
 
-        signal, label = file['audio'][int(ix)], int(file['label'][int(ix)])
+        if self.duration > 0.5 and self.mode == 'train':
+            start = int(ix)
+            end = start + int(self.duration / 0.5)
+            signal = file['audio'][start:end].flatten()
+        elif self.duration > 0.5 and self.mode != 'train':
+            ix = int(ix)
+            # signal = np.zeros([int(16000 * self.duration)]).astype('float')
+            # signal[:8000] = file['audio'][ix]
+            signal = np.tile(file['audio'][ix], int(self.duration / 0.5))
+        else:
+            ix = int(ix)
+            signal = file['audio'][ix]
 
         x_data = signal / 30000
         x_data = torch.Tensor(x_data)
@@ -126,9 +136,7 @@ class SoundLoader(Dataset):
                 x_data = torch.log(x_data + 1e-4)
 
         # Load y data if the mode is not a test!
-        if label != 1:
-            label = 0
-
+        label = self.label_list[index]
         y_data = torch.Tensor([label]).long()
         y_data = y_data.item()
         return x_data, y_data
