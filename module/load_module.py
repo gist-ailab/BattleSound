@@ -7,7 +7,7 @@ from utility.warmup_scheduler import GradualWarmupScheduler
 from copy import copy, deepcopy
 from .radam import RAdam
 import numpy as np
-from .model import Conv1DNet, Conv2DNet
+from .model import Conv1DNet, Conv2DNet, CRNN_1D, CRNN_2D
 
 
 # Dummy
@@ -38,6 +38,10 @@ class model_manager(object):
             self.model = Conv1DNet()
         elif self.option.result['network']['network_type'] == 'conv2d':
             self.model = Conv2DNet(self.option.result['train']['feature_type'], duration=self.option.result['train']['duration'])
+        elif self.option.result['network']['network_type'] == 'crnn_1d':
+            self.model = CRNN_1D(hidden_dim=64, num_layers=2)
+        elif self.option.result['network']['network_type'] == 'crnn_2d':
+            self.model = CRNN_2D(hidden_dim=64, num_layers=2, num_classes=2)
         else:
             raise('Select Proper Network Type')
         

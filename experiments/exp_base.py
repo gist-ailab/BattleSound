@@ -70,11 +70,11 @@ if __name__=='__main__':
         save_dir = '/data/sung/checkpoint/battlesound/main'
         data_dir = '/data/sung/dataset/dongwoon'
 
-        exp_name = 'sensors'
+        exp_name = 'sensors_new'
         start = 0
         ix = 0
         comb_list = []
-        epoch = 30
+        epoch = 50
 
 
         train_prop = 1.
@@ -86,23 +86,21 @@ if __name__=='__main__':
         
         num_per_gpu = 1
         
-        gpus = ['1', '2']
+        gpus = ['0', '1', '2', '3']
         
         # Selection
-        feature_list = ['melspec', 'raw_signal']
+        feature_list = [('melspec', 'conv2d'), ('melspec', 'crnn_2d'), ('raw_signal', 'conv1d'), ('raw_signal', 'crnn_1d')]
         label_list = ['voice', 'event']
         duration_list = [0.5]
-        seed_list = [0]
+        seed_list = [0, 1, 2, 3, 4]
         
         for duration in duration_list:
             for label in label_list:    
-                for feature in feature_list:
+                for feature_ind in feature_list:
                     for seed in seed_list:
-                        if feature == 'melspec':
-                            network = 'conv2d'
-                        else:
-                            network = 'conv1d'
-                            
+                        feature = feature_ind[0]
+                        network = feature_ind[1]
+
                         comb_list.append({'train': 
                                                 {
                                                     'train_method': 'base',
@@ -147,7 +145,7 @@ if __name__=='__main__':
         
         num_per_gpu = 1
         
-        gpus = ['3']
+        gpus = ['3', '3']
         
         # Selection
         feature_list = ['melspec']

@@ -39,13 +39,14 @@ def save_mel_spec(file_path, save_dir):
         signal_length = len(emphasized_signal)
         frame_length = int(round(frame_length))
         frame_step = int(round(frame_step))
-        num_frames = 1 + (signal_length - frame_length) // frame_step
+        num_frames = 3 + (signal_length - frame_length) // frame_step # padding 2 frames
         # num_frames = int(np.ceil(float(np.abs(signal_length - frame_length)) / frame_step))
-        pad_signal_length = num_frames * frame_step + frame_length
-        z = np.zeros((pad_signal_length - signal_length))
-        pad_signal = np.append(emphasized_signal, z) # Pad Signal to make sure that all frames have equal number of samples without truncating any samples from the original signal
+        z = np.zeros(int(frame_length / 2))
+        pad_signal = np.concatenate([z, emphasized_signal, z]) # Pad Signal to make sure that all frames have equal number of samples without truncating any samples from the original signal
 
         indices = np.tile(np.arange(0, frame_length), (num_frames, 1)) + np.tile(np.arange(0, num_frames * frame_step, frame_step), (frame_length, 1)).T
+        num_time_bin = indices.shape[0]
+        
         frames = pad_signal[indices.astype(np.int32, copy=False)]
 
         # Hamming Window
@@ -68,13 +69,14 @@ def save_mel_spec(file_path, save_dir):
 
 
         plt.gca().set_aspect('equal')
-        plt.pcolor(np.transpose(spectrogram)[:,:40]) # dim: (N, T)
+        plt.pcolor(np.transpose(spectrogram)[:,:num_time_bin]) # dim: (N, T)
+        print(np.transpose(spectrogram)[:,:num_time_bin].shape)
         plt.savefig(os.path.join(save_dir, 'spec/%s_%d.png' %(file_id, index)), dpi=300)
         
         pow_frames = ((1.0 / NFFT) * ((mag_frames) ** 2))  # Power Spectrum
 
         # Filter Banks - Mel
-        nfilt = 40
+        nfilt = 41
         min_freq = 300
         max_freq = 8000
 
@@ -100,11 +102,10 @@ def save_mel_spec(file_path, save_dir):
 
         filter_banks = filter_banks.T
 
-        stride = 5
-        num_images = 1 + (filter_banks.shape[1] - 40) // 5
+        num_images = 1 + (filter_banks.shape[1] - num_time_bin) // 5
 
         print(num_images)
-        filter_banks_plot = filter_banks[:, :40] # dim: (N, T)
+        filter_banks_plot = filter_banks[:, :num_time_bin] # dim: (N, T)
         print(filter_banks.shape)
 
         fig = plt.figure()

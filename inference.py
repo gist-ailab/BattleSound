@@ -26,6 +26,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from utility.distributed import apply_gradient_allreduce, reduce_tensor
 import pathlib
 import random
+from visualize.gradcam import GradCAM
 
 
 def set_random_seed(seed_value, use_cuda=True):
@@ -52,6 +53,8 @@ def cleanup():
 
 
 def main(rank, option, resume, save_folder, log, master_port):
+    gradcam = True
+    
     # GPU Configuration
     num_gpu = len(option.result['train']['gpu'].split(','))
     multi_gpu = len(option.result['train']['gpu'].split(',')) > 1
@@ -73,6 +76,9 @@ def main(rank, option, resume, save_folder, log, master_port):
     for ix, model in enumerate(model_list):
         model.load_state_dict(save_module.save_dict['model'][ix])
 
+    if gradcam:
+        model_list[0] = GradCAM(model_list[0])
+
     for ix in range(len(model_list)):
         if multi_gpu:
             model_list[ix] = nn.DataParallel(model_list[ix]).to(rank)
@@ -80,27 +86,27 @@ def main(rank, option, resume, save_folder, log, master_port):
             model_list[ix] = model_list[ix].to(rank)
             
     # Dataset and DataLoader
-    val_dataset = load_data(option, data_type='val')
+    tr_dataset = load_data(option, data_type='train')
 
     # Data Loader
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=pin_memory, num_workers=option.result['train']['num_workers'])
+    tr_loader = DataLoader(tr_dataset, batch_size=batch_size, shuffle=False, pin_memory=pin_memory, num_workers=option.result['train']['num_workers'])
 
     # Mixed Precision
     scaler = None        
 
-    # Run
     # Evaluation
     epoch = 0
-    result = naive_trainer.validation(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, val_loader, scaler, run, gradcam=True)
+        
+    result = naive_trainer.gradcam(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, tr_loader, scaler, run)
     return None
 
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/battlesound/main/')
+    parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/battlesound/main')
     parser.add_argument('--exp_name', type=str, default='sensors')
-    parser.add_argument('--exp_num', type=int, default=0)
-    parser.add_argument('--gpu', type=str, default='0')
+    parser.add_argument('--exp_num', type=int, default=1)
+    parser.add_argument('--gpu', type=str, default='1')
     args = parser.parse_args()
 
     # Configure
@@ -136,4 +142,4 @@ if __name__=='__main__':
     master_port = str(random.randint(100,10000))
     
     set_random_seed(option.result['train']['seed'])
-    main('cuda', option, resume, save_folder, args.log, master_port)
+    main('cuda', option, resume, save_folder, False, master_port)

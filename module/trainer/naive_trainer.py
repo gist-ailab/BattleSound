@@ -9,7 +9,6 @@ import torch.distributed as dist
 from copy import deepcopy
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-from visualize import gradcam
 
 # Utility
 def select_dataset(option, addon_list, tr_dataset, tr_transform, val_transform, rank):
@@ -54,22 +53,10 @@ def accuracy(output, target, topk=(1,)):
         return res
 
 
-def forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=True, epoch=0, multi_gpu=False, gradcam=False):
-    train_method = option.result['train']['train_method']
-        
-    if epoch == 0:
-        save = True
-    else:
-        save = False
-        
-    if gradcam:
-        output, output_grad = model_list[0](input)
-    else:
-        output = model_list[0](input)
-        
+def forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=True, epoch=0, multi_gpu=False):
+    output = model_list[0](input)
     loss_cls = criterion_list[0](output, label)
-    loss_channel = torch.tensor(0.).to(rank)
-    return output, loss_cls, loss_channel
+    return output, loss_cls
 
 
 def train(option, rank, epoch, model_list, addon_list, criterion_list, optimizer_list, multi_gpu, tr_loader, scaler, save_module, neptune, save_folder):
@@ -78,26 +65,14 @@ def train(option, rank, epoch, model_list, addon_list, criterion_list, optimizer
 
     # For Log
     mean_loss_cls = 0.
-    mean_loss_channel = 0.
     mean_acc1 = 0.
 
     # Freeze !
-    train_method = option.result['train']['train_method']
-    
-    if train_method == 'base':
-        model_list[0].train()
-    elif train_method == 'selection':
-        model_list[0].train()
-    elif train_method == 'merge':
-        model_list[0].train()
-    elif train_method == 'auxiliary':
-        model_list[0].train()
-    else:
-        raise('Select Proper Train Method')
+    model_list[0].train()
     
     # Run
     for iter, tr_data in enumerate(tqdm(tr_loader)):
-        input, label = tr_data
+        input, label, _, _ = tr_data
         input, label = input.to(rank), label.to(rank)
 
         # Forward
@@ -105,14 +80,14 @@ def train(option, rank, epoch, model_list, addon_list, criterion_list, optimizer
         
         if scaler is not None:
             with torch.cuda.amp.autocast():
-                output, loss_cls, loss_channel = forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=True, epoch=epoch, multi_gpu=multi_gpu)
-                scaler.scale(loss_cls + loss_channel).backward()
+                output, loss_cls = forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=True, epoch=epoch, multi_gpu=multi_gpu)
+                scaler.scale(loss_cls).backward()
                 scaler.step(optimizer_list[0])
                 scaler.update()
                 
         else:
-            output, loss_cls, loss_channel = forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=True, epoch=epoch, multi_gpu=multi_gpu)
-            (loss_cls + loss_channel).backward()
+            output, loss_cls = forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=True, epoch=epoch, multi_gpu=multi_gpu)
+            loss_cls.backward()
             optimizer_list[0].step()
             
         # Empty Un-necessary Memory
@@ -123,28 +98,19 @@ def train(option, rank, epoch, model_list, addon_list, criterion_list, optimizer
 
         if (num_gpu > 1) and (option.result['train']['ddp']):
             mean_loss_cls += reduce_tensor(loss_cls.data, num_gpu).item()
-            mean_loss_channel += reduce_tensor(loss_channel.data, num_gpu).item()
             mean_acc1 += reduce_tensor(acc_result[0], num_gpu)
 
         else:
             mean_loss_cls += loss_cls.item()
-            mean_loss_channel += loss_channel.item()
             mean_acc1 += acc_result[0]
         
-        del output, loss_cls, loss_channel
+        del output, loss_cls
 
     # Train Result
     mean_acc1 /= len(tr_loader)
     mean_loss_cls /= len(tr_loader)
-    mean_loss_channel /= len(tr_loader)
 
-    # Attention Value
-    if train_method != 'base' and train_method != 'auxiliary':
-        if multi_gpu:
-            attn_selection = model_list[0].module.attn_selection.get_attention()
-        else:
-            attn_selection = model_list[0].attn_selection.get_attention()
-        
+
     # Saving Network Params
     if option.result['tune']['tuning']:
         model_param = [None]
@@ -165,27 +131,18 @@ def train(option, rank, epoch, model_list, addon_list, criterion_list, optimizer
 
     if (rank == 0) or (rank == 'cuda'):
         # Logging
-        print('Epoch-(%d/%d) - tr_ACC@1: %.2f, tr_loss_cls:%.3f, tr_loss_channel:%.3f' %(epoch, option.result['train']['total_epoch'], \
-                                                                            mean_acc1, mean_loss_cls, mean_loss_channel))
+        print('Epoch-(%d/%d) - tr_ACC@1: %.2f, tr_loss_cls:%.3f' %(epoch, option.result['train']['total_epoch'], mean_acc1, mean_loss_cls))
         neptune['result/tr_loss_cls'].log(mean_loss_cls)
-        neptune['result/tr_loss_channel'].log(mean_loss_channel)
         neptune['result/tr_acc1'].log(mean_acc1)
         
-        if train_method != 'base' and train_method != 'auxiliary':
-            neptune['result/attn_selection'].log(attn_selection)
         
-        if not option.result['tune']['tuning']:
-            # Save
-            if epoch % option.result['train']['save_epoch'] == 0:
-                torch.save({'model':model_param}, os.path.join(save_folder, 'epoch%d_model.pt' %epoch))
-
     if multi_gpu and (option.result['train']['ddp']) and not option.result['tune']['tuning']:
         dist.barrier()
 
     return save_module
 
 
-def validation(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, val_loader, scaler, neptune, gradcam=False):
+def validation(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, val_loader, scaler, neptune):
     # GPU
     num_gpu = len(option.result['train']['gpu'].split(','))
         
@@ -195,52 +152,64 @@ def validation(option, rank, epoch, model_list, addon_list, criterion_list, mult
     
     # For Log
     mean_loss_cls = 0.
-    mean_loss_channel = 0.
     mean_acc1 = 0.
 
-    with torch.no_grad():
-        for iter, val_data in enumerate(tqdm(val_loader)):                
-            input, label = val_data
-            input, label = input.to(rank), label.to(rank)
+    for iter, val_data in enumerate(tqdm(val_loader)):                
+        input, label, _, _ = val_data
+        input, label = input.to(rank), label.to(rank)
 
-            output, loss_cls, loss_channel = forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=False, epoch=epoch, multi_gpu=multi_gpu, gradcam=gradcam)
+        with torch.no_grad():
+            output, loss_cls = forward_single(option, input, label, model_list, addon_list, iter, rank, criterion_list, train=False, epoch=epoch, multi_gpu=multi_gpu)
+            
+        acc_result = accuracy(output, label, topk=(1, 5))
 
-            acc_result = accuracy(output, label, topk=(1, 5))
+        if (num_gpu > 1) and (option.result['train']['ddp']):
+            mean_loss_cls += reduce_tensor(loss_cls.data, num_gpu).item()
+            mean_acc1 += reduce_tensor(acc_result[0], num_gpu)
 
-            if (num_gpu > 1) and (option.result['train']['ddp']):
-                mean_loss_cls += reduce_tensor(loss_cls.data, num_gpu).item()
-                mean_loss_channel += reduce_tensor(loss_channel.data, num_gpu).item()
-                mean_acc1 += reduce_tensor(acc_result[0], num_gpu)
-
-            else:
-                mean_loss_cls += loss_cls.item()
-                mean_loss_channel += loss_channel.item()
-                mean_acc1 += acc_result[0]
+        else:
+            mean_loss_cls += loss_cls.item()
+            mean_acc1 += acc_result[0]
 
     # Remove Un-neccessary Memory
-    del output, loss_cls, loss_channel
+    del output, loss_cls
     torch.cuda.empty_cache()
     
     # Train Result
     mean_acc1 /= len(val_loader)
     mean_loss_cls /= len(val_loader)
-    mean_loss_channel /= len(val_loader)
 
     # Logging
     if (rank == 0) or (rank == 'cuda'):
-        print('Epoch-(%d/%d) - val_ACC@1: %.2f, val_loss_cls:%.3f, val_loss_channel:%.3f' % (epoch, option.result['train']['total_epoch'], \
-                                                                                mean_acc1, mean_loss_cls, mean_loss_channel))
+        print('Epoch-(%d/%d) - val_ACC@1: %.2f, val_loss_cls:%.3f' % (epoch, option.result['train']['total_epoch'], mean_acc1, mean_loss_cls))
         neptune['result/val_loss_cls'].log(mean_loss_cls)
-        neptune['result/val_loss_channel'].log(mean_loss_channel)
         neptune['result/val_acc1'].log(mean_acc1)
         neptune['result/epoch'].log(epoch)
 
-    result = {'acc1':mean_acc1, 'val_loss':mean_loss_cls + mean_loss_channel}
-
-    if option.result['tune']['tuning']:
-        tune.report(loss=(mean_loss_cls + mean_loss_channel), accuracy=mean_acc1)
-
+    result = {'acc1':mean_acc1, 'val_loss':mean_loss_cls}
     return result
 
-def test():
-    pass
+
+
+def gradcam(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, val_loader, scaler, neptune):
+    # GPU
+    num_gpu = len(option.result['train']['gpu'].split(','))
+        
+    # Freeze !
+    model_list[0].eval()
+    
+    # For Log    
+    for iter, val_data in enumerate(tqdm(val_loader)):                
+        input, label, file_path, ix = val_data
+        input = input.to(rank)
+
+        for index in range(input.size(0)):
+            save_path = file_path[index].replace('dongwoon', 'dongwoon/gradcam').replace('.npz', '_%d.npy' %int(ix[index]))
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            
+            saliency, output = model_list[0](input[[index]])
+            saliency = saliency.cpu().detach().numpy()
+            np.save(save_path, saliency)
+
+    torch.cuda.empty_cache()
+    return None

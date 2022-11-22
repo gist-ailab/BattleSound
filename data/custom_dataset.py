@@ -103,10 +103,13 @@ class SoundLoader(Dataset):
             raise ValueError
 
     def __getitem__(self, index):
-        name, ix = self.file_index[index]            
+        name, ix = self.file_index[index]
+        
         if self.mode == 'train':
+            file_path = os.path.join(self.option.result['data']['data_dir'], 'label_%.1f' %self.option.result['train']['duration'], self.option.result['data']['data_type'], name)
             file = dict(np.load(os.path.join(self.option.result['data']['data_dir'], 'label_%.1f' %self.option.result['train']['duration'], self.option.result['data']['data_type'], name)))
         else:
+            file_path = os.path.join(self.option.result['data']['data_dir'], 'val_0.5', self.option.result['data']['data_type'], name)  
             file = dict(np.load(os.path.join(self.option.result['data']['data_dir'], 'val_0.5', self.option.result['data']['data_type'], name)))
 
         if self.duration > 0.5 and self.mode == 'train':
@@ -114,13 +117,11 @@ class SoundLoader(Dataset):
             end = start + int(self.duration / 0.5)
             signal = file['audio'][start:end].flatten()
         elif self.duration > 0.5 and self.mode != 'train':
-            ix = int(ix)
             # signal = np.zeros([int(16000 * self.duration)]).astype('float')
             # signal[:8000] = file['audio'][ix]
-            signal = np.tile(file['audio'][ix], int(self.duration / 0.5))
+            signal = np.tile(file['audio'][int(ix)], int(self.duration / 0.5))
         else:
-            ix = int(ix)
-            signal = file['audio'][ix]
+            signal = file['audio'][int(ix)]
 
         x_data = signal / 30000
         x_data = torch.Tensor(x_data)
@@ -139,7 +140,9 @@ class SoundLoader(Dataset):
         label = self.label_list[index]
         y_data = torch.Tensor([label]).long()
         y_data = y_data.item()
-        return x_data, y_data
+        
+        return x_data, y_data, file_path, ix
+            
 
     def __len__(self):
         return len(self.file_index)
