@@ -178,26 +178,27 @@ class CRNN_1D(nn.Module):
 
 if __name__=='__main__':
     import numpy as np
+    import pytorch_model_summary
     
     # Input
     mel_spec = torch.ones([2, 1, 41,41]).float()
     signal = torch.ones([2, 8000]).float()
 
     # Model
-    model = Conv1DNet(hidden_dim=64)
+    model = Conv1DNet()
     params = sum([np.prod(p.size()) for p in model.parameters()])
-    print(params)
+    print(pytorch_model_summary.summary(model, torch.ones(1, 1, 8000)))
 
     model = CRNN_1D(hidden_dim=64, num_layers=2)
     params = sum([np.prod(p.size()) for p in model.parameters()])
-    print(params)
+    print(pytorch_model_summary.summary(model, torch.ones(1, 1, 8000)))
     
     model = Conv2DNet('mel_spec', duration=0.5)
     params = sum([np.prod(p.size()) for p in model.parameters()])
-    print(params)
+    print(pytorch_model_summary.summary(model, torch.ones(1, 1, 41, 41)))
+    
 
     model = CRNN_2D(hidden_dim=64, num_layers=2, num_classes=2)
     params = sum([np.prod(p.size()) for p in model.parameters()])
-    print(params)
-
+    print(pytorch_model_summary.summary(model, torch.ones(1, 1, 41, 41)))
 

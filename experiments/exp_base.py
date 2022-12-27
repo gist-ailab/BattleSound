@@ -129,7 +129,7 @@ if __name__=='__main__':
         save_dir = '/data/sung/checkpoint/battlesound/ablation'
         data_dir = '/data/sung/dataset/dongwoon'
 
-        exp_name = 'sensors'
+        exp_name = 'sensors_new'
         start = 0
         ix = 0
         comb_list = []
@@ -145,13 +145,13 @@ if __name__=='__main__':
         
         num_per_gpu = 1
         
-        gpus = ['3', '3']
+        gpus = ['0', '1', '2', '3']
         
         # Selection
         feature_list = ['melspec']
         label_list = ['voice', 'event']
         duration_list = [2.0, 4.0, 8.0]
-        seed_list = [0]
+        seed_list = [0,1,2,3,4]
         
         for duration in duration_list:
             for label in label_list:    
