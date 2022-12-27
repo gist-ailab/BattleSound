@@ -22,6 +22,7 @@
   "lr": 0.1,
   "weight_decay": 1e-4,
 
+  "multi_class": false,
   "train_type": "naive",
   "train_method": "merge",
   "target_list": null,

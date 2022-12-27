@@ -35,13 +35,13 @@ class model_manager(object):
     def load_network(self):
         # Load Pre-trained Models
         if self.option.result['network']['network_type'] == 'conv1d':
-            self.model = Conv1DNet()
+            self.model = Conv1DNet(multi_class=self.option.result['train']['multi_class'])
         elif self.option.result['network']['network_type'] == 'conv2d':
-            self.model = Conv2DNet(self.option.result['train']['feature_type'], duration=self.option.result['train']['duration'])
+            self.model = Conv2DNet(self.option.result['train']['feature_type'], duration=self.option.result['train']['duration'], multi_class=self.option.result['train']['multi_class'])
         elif self.option.result['network']['network_type'] == 'crnn_1d':
-            self.model = CRNN_1D(hidden_dim=64, num_layers=2)
+            self.model = CRNN_1D(hidden_dim=64, num_layers=2, multi_class=self.option.result['train']['multi_class'])
         elif self.option.result['network']['network_type'] == 'crnn_2d':
-            self.model = CRNN_2D(hidden_dim=64, num_layers=2, num_classes=2)
+            self.model = CRNN_2D(hidden_dim=64, num_layers=2, multi_class=self.option.result['train']['multi_class'])
         else:
             raise('Select Proper Network Type')
         

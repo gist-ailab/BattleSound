@@ -6,12 +6,16 @@ import numpy as np
 from random import shuffle
 import torch
 import random
-from data.custom_dataset import SoundLoader
+from data.custom_dataset import SoundLoader, MultiSoundLoader
 
 
 def load_battle(option):
-    tr_dataset = SoundLoader(option, mode='train')
-    val_dataset = SoundLoader(option, mode='val')
+    if option.result['train']['multi_class']:
+        tr_dataset = MultiSoundLoader(option, mode='train')
+        val_dataset = MultiSoundLoader(option, mode='val')
+    else:
+        tr_dataset = SoundLoader(option, mode='train')
+        val_dataset = SoundLoader(option, mode='val')
     return tr_dataset, val_dataset
 
 

@@ -6,9 +6,14 @@ from torch.nn import init
 
 # CNN 2D
 class Conv2DNet(nn.Module):
-    def __init__(self, feature_type, duration):
+    def __init__(self, feature_type, duration, multi_class=False):
         super(Conv2DNet, self).__init__()
-        self.n_classes = 2
+        
+        if multi_class:
+            self.n_classes = 4
+        else:
+            self.n_classes = 2
+            
         self.stride = (4, 2) if feature_type == 'spec' else 2
         self.layer1 = nn.Sequential(
             nn.Conv2d(1, 10, kernel_size=5, stride=self.stride, padding=2),
@@ -49,9 +54,13 @@ class Conv2DNet(nn.Module):
 
 # CNN 1D
 class Conv1DNet(nn.Module):
-    def __init__(self):
+    def __init__(self, multi_class=False):
         super(Conv1DNet, self).__init__()
-        self.n_classes = 2
+        
+        if multi_class:
+            self.n_classes = 4
+        else:
+            self.n_classes = 2
         
         self.layer1 = nn.Sequential(
             nn.Conv1d(1, 10, kernel_size=25, stride=3),
@@ -90,13 +99,19 @@ class Conv1DNet(nn.Module):
 
 # CRNN
 class CRNN_2D(nn.Module):
-    def __init__(self, hidden_dim, num_layers, num_mels=41, num_classes=2):
+    def __init__(self, hidden_dim, num_layers, num_mels=41, multi_class=False):
         """
         Args:
           n_mels (float): number of mel bin
           n_class (int): number of class
         """
         super(CRNN_2D, self).__init__()
+        
+        if multi_class:
+            num_classes=4
+        else:
+            num_classes=2
+        
         # Spectrogram
         self.stride = 2
         self.layer1 = nn.Sequential(
@@ -132,8 +147,14 @@ class CRNN_2D(nn.Module):
 
 # Bi-LSTM
 class CRNN_1D(nn.Module):
-    def __init__(self, hidden_dim=64, num_layers=2, num_classes=2):
+    def __init__(self, hidden_dim=64, num_layers=2, multi_class=False):
         super(CRNN_1D, self).__init__()
+        
+        if multi_class:
+            num_classes = 4
+        else:
+            num_classes = 2
+
         self.layer1 = nn.Sequential(
             nn.Conv1d(1, hidden_dim, kernel_size=25, stride=3),
             nn.BatchNorm1d(hidden_dim),
