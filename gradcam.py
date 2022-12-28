@@ -52,12 +52,13 @@ def cleanup():
     dist.destroy_process_group()
 
 
-def main(rank, option, resume, save_folder, log, master_port):   
+def main(rank, option, resume, save_folder, log, master_port):
+    gradcam = True
+    
     # GPU Configuration
     num_gpu = len(option.result['train']['gpu'].split(','))
     multi_gpu = len(option.result['train']['gpu'].split(',')) > 1
     ddp = False
-    option.result['train']['multi_class'] = False
 
     batch_size, pin_memory = option.result['train']['batch_size'], option.result['train']['pin_memory']
 
@@ -75,6 +76,9 @@ def main(rank, option, resume, save_folder, log, master_port):
     for ix, model in enumerate(model_list):
         model.load_state_dict(save_module.save_dict['model'][ix])
 
+    if gradcam:
+        model_list[0] = GradCAM(model_list[0])
+
     for ix in range(len(model_list)):
         if multi_gpu:
             model_list[ix] = nn.DataParallel(model_list[ix]).to(rank)
@@ -82,25 +86,26 @@ def main(rank, option, resume, save_folder, log, master_port):
             model_list[ix] = model_list[ix].to(rank)
             
     # Dataset and DataLoader
-    val_dataset = load_data(option, data_type='val')
+    tr_dataset = load_data(option, data_type='train')
 
     # Data Loader
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, pin_memory=pin_memory, num_workers=option.result['train']['num_workers'])
+    tr_loader = DataLoader(tr_dataset, batch_size=batch_size, shuffle=False, pin_memory=pin_memory, num_workers=option.result['train']['num_workers'])
 
     # Mixed Precision
     scaler = None        
 
     # Evaluation
     epoch = 0
-    result = naive_trainer.validation(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, val_loader, scaler, run, confusion=True)
+        
+    result = naive_trainer.gradcam(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, tr_loader, scaler, run)
     return None
 
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/battlesound/main')
-    parser.add_argument('--exp_name', type=str, default='sensors_new')
-    parser.add_argument('--exp_num', type=int, default=10)
+    parser.add_argument('--exp_name', type=str, default='sensors')
+    parser.add_argument('--exp_num', type=int, default=1)
     parser.add_argument('--gpu', type=str, default='1')
     args = parser.parse_args()
 
@@ -111,7 +116,7 @@ if __name__=='__main__':
     option = config(save_folder)
     config_path = os.path.join(save_folder, 'last_config.json')
     option.import_config(config_path)
-    
+
     # Resume Configuration
     resume_path = os.path.join(save_folder, 'last_dict.pt')
 
@@ -121,6 +126,7 @@ if __name__=='__main__':
     # Target Class
     if option.result['train']['target_list'] is not None:
         option.result['data']['num_class'] = len(option.result['train']['target_list'])
+    
     
     # Resume
     option.result['train']['gpu'] = args.gpu

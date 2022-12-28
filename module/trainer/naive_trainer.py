@@ -142,7 +142,7 @@ def train(option, rank, epoch, model_list, addon_list, criterion_list, optimizer
     return save_module
 
 
-def validation(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, val_loader, scaler, neptune):
+def validation(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, val_loader, scaler, neptune, confusion=False):
     # GPU
     num_gpu = len(option.result['train']['gpu'].split(','))
         
@@ -153,7 +153,10 @@ def validation(option, rank, epoch, model_list, addon_list, criterion_list, mult
     # For Log
     mean_loss_cls = 0.
     mean_acc1 = 0.
-
+        
+    if confusion:
+        y_list, pred_list = [], []
+        
     for iter, val_data in enumerate(tqdm(val_loader)):                
         input, label, _, _ = val_data
         input, label = input.to(rank), label.to(rank)
@@ -170,7 +173,40 @@ def validation(option, rank, epoch, model_list, addon_list, criterion_list, mult
         else:
             mean_loss_cls += loss_cls.item()
             mean_acc1 += acc_result[0]
+        
+        if confusion:
+            y_list.append(label)
+            
+            _, pred = output.topk(1, 1, True, True)
+            pred_list.append(pred.view(-1))
+        
 
+    if confusion:
+        y_list = torch.cat(y_list).cpu().detach().numpy()
+        pred_list = torch.cat(pred_list).cpu().detach().numpy()
+        
+        from sklearn.metrics import confusion_matrix
+        import pandas as pd
+        import matplotlib.pyplot as plt
+        import seaborn as sn
+        cm = confusion_matrix(y_list, pred_list)
+        
+        # Naming
+        save_name = '%s_%s.png' %(option.result['data']['data_type'], option.result['network']['network_type'])
+
+        if option.result['data']['data_type'] == 'voice':
+            positive, negative = "Voice", "Non-voice"
+        else:
+            positive, negative = "Weapon", "Non-weapon"
+        
+        df_cm = pd.DataFrame(cm, index = [negative, positive], columns = [negative, positive])
+        plt.figure(figsize = (3,3))
+        sn.heatmap(df_cm, annot=True, cbar=False, cmap="Blues", fmt='g')
+        # plt.xlabel('Pred')
+        # plt.ylabel('GT')
+        plt.savefig(save_name, dpi=300)
+
+    
     # Remove Un-neccessary Memory
     del output, loss_cls
     torch.cuda.empty_cache()
@@ -182,9 +218,11 @@ def validation(option, rank, epoch, model_list, addon_list, criterion_list, mult
     # Logging
     if (rank == 0) or (rank == 'cuda'):
         print('Epoch-(%d/%d) - val_ACC@1: %.2f, val_loss_cls:%.3f' % (epoch, option.result['train']['total_epoch'], mean_acc1, mean_loss_cls))
-        neptune['result/val_loss_cls'].log(mean_loss_cls)
-        neptune['result/val_acc1'].log(mean_acc1)
-        neptune['result/epoch'].log(epoch)
+        
+        if neptune is not None:
+            neptune['result/val_loss_cls'].log(mean_loss_cls)
+            neptune['result/val_acc1'].log(mean_acc1)
+            neptune['result/epoch'].log(epoch)
 
     result = {'acc1':mean_acc1, 'val_loss':mean_loss_cls}
     return result
