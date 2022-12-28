@@ -192,16 +192,31 @@ def validation(option, rank, epoch, model_list, addon_list, criterion_list, mult
         cm = confusion_matrix(y_list, pred_list)
         
         # Naming
-        save_name = '%s_%s.png' %(option.result['data']['data_type'], option.result['network']['network_type'])
+        network_type =  option.result['network']['network_type']
+        
+        if 'conv' in network_type:
+            n = 'CNN'
+        else:
+            n = 'CRNN'
+        
+        if '1d' in network_type:
+            network_name = '%s %s' %('1D', n)
+        else:
+            network_name = '%s %s' %('2D', n)
+        
+        save_name = '%s_%s.png' %(option.result['data']['data_type'], network_name)
 
         if option.result['data']['data_type'] == 'voice':
             positive, negative = "Voice", "Non-voice"
+            task = 'VCAD'
         else:
             positive, negative = "Weapon", "Non-weapon"
+            task = 'WSED'
         
         df_cm = pd.DataFrame(cm, index = [negative, positive], columns = [negative, positive])
         plt.figure(figsize = (3,3))
         sn.heatmap(df_cm, annot=True, cbar=False, cmap="Blues", fmt='g')
+        plt.title('%s-%s' %(task, network_name))
         # plt.xlabel('Pred')
         # plt.ylabel('GT')
         plt.savefig(save_name, dpi=300)
