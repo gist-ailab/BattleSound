@@ -67,7 +67,7 @@ if __name__=='__main__':
     # Base
     if args.exp == 0:
         server = 'toast'
-        save_dir = '/data/sung/checkpoint/battlesound/revision'
+        save_dir = '/data/sung/checkpoint/battlesound/revision2'
         data_dir = '/data/sung/dataset/dongwoon'
 
         exp_name = 'sensors_new_multi_class'
@@ -116,7 +116,7 @@ if __name__=='__main__':
                                             },
                                     'data':
                                             {   'data_type': 'multi',
-                                                'num_class': 4
+                                                'num_class': 3
                                             },
                                     'index': ix
                                     })

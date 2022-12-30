@@ -10,7 +10,7 @@ class Conv2DNet(nn.Module):
         super(Conv2DNet, self).__init__()
         
         if multi_class:
-            self.n_classes = 4
+            self.n_classes = 3
         else:
             self.n_classes = 2
             
@@ -58,7 +58,7 @@ class Conv1DNet(nn.Module):
         super(Conv1DNet, self).__init__()
         
         if multi_class:
-            self.n_classes = 4
+            self.n_classes = 3
         else:
             self.n_classes = 2
         
@@ -108,7 +108,7 @@ class CRNN_2D(nn.Module):
         super(CRNN_2D, self).__init__()
         
         if multi_class:
-            num_classes=4
+            num_classes = 3
         else:
             num_classes=2
         
@@ -151,7 +151,7 @@ class CRNN_1D(nn.Module):
         super(CRNN_1D, self).__init__()
         
         if multi_class:
-            num_classes = 4
+            num_classes = 3
         else:
             num_classes = 2
 

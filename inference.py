@@ -93,14 +93,14 @@ def main(rank, option, resume, save_folder, log, master_port):
     # Evaluation
     epoch = 0
     result = naive_trainer.validation(option, rank, epoch, model_list, addon_list, criterion_list, multi_gpu, val_loader, scaler, run, confusion=True)
-    return None
+    return result
 
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--save_dir', type=str, default='/data/sung/checkpoint/battlesound/main')
     parser.add_argument('--exp_name', type=str, default='sensors_new')
-    parser.add_argument('--exp_num', type=int, default=10)
+    parser.add_argument('--exp_num', type=int, default=0)
     parser.add_argument('--gpu', type=str, default='1')
     args = parser.parse_args()
 
@@ -136,4 +136,7 @@ if __name__=='__main__':
     master_port = str(random.randint(100,10000))
     
     set_random_seed(option.result['train']['seed'])
-    main('cuda', option, resume, save_folder, False, master_port)
+    result = main('cuda', option, resume, save_folder, False, master_port)
+    
+    # with open('result_ablation.txt', 'a') as f:
+    #     f.write('%d_%.4f\n' %(args.exp_num, result['acc1']))

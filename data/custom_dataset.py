@@ -31,12 +31,7 @@ class SoundLoader(Dataset):
             self.num_0 = len(self.label_list['0'])
             self.num_1 = len(self.label_list['1'])
 
-            if int(self.num_1 / 2) > self.num_0:
-                self.negative_list = self.label_list['0'].tolist() + \
-                                     self.label_list['-1'][np.random.choice(range(len(self.label_list['-1'].tolist())), self.num_1 - self.num_0, replace=False).tolist()].tolist()
-            else:
-                self.negative_list = self.label_list['0'][np.random.choice(range(len(self.label_list['0'].tolist())), int(self.num_1 * 0.8), replace=False).tolist()].tolist() + \
-                                     self.label_list['-1'][np.random.choice(range(len(self.label_list['-1'].tolist())), int(self.num_1 * 0.1), replace=False).tolist()].tolist()
+            self.negative_list = self.label_list['0'].tolist()
 
             self.file_index = self.positive_list + self.negative_list
             self.label_list = [1] * len(self.positive_list) + [0] * len(self.negative_list)
@@ -45,8 +40,7 @@ class SoundLoader(Dataset):
             self.label_list = dict(np.load(os.path.join(option.result['data']['data_dir'], 'val_0.5', 'meta_dict_%s_pre.npz'%option.result['data']['data_type'])))
 
             self.positive_list = self.label_list['1'].tolist()
-            self.negative_list = self.label_list['0'].tolist() + \
-                                 self.label_list['-1'].tolist()
+            self.negative_list = self.label_list['0'].tolist()
 
             self.file_index = self.positive_list + self.negative_list
             self.label_list = [1] * len(self.positive_list) + [0] * len(self.negative_list)
@@ -161,8 +155,8 @@ class MultiSoundLoader(Dataset):
         else:
             self.label_list = dict(np.load(os.path.join(option.result['data']['data_dir'], 'multi_class', 'val_meta_dict.npz')))
         
-        self.file_index = self.label_list['0'].tolist() + self.label_list['1'].tolist() + self.label_list['2'].tolist() + self.label_list['3'].tolist()
-        self.label_list = [0] * len(self.label_list['0']) + [1] * len(self.label_list['1']) + [2] * len(self.label_list['2']) + [3] * len(self.label_list['3']) 
+        self.file_index = self.label_list['0'].tolist() + self.label_list['1'].tolist() + self.label_list['2'].tolist()
+        self.label_list = [0] * len(self.label_list['0']) + [1] * len(self.label_list['1']) + [2] * len(self.label_list['2']) 
 
         # Pre-processing
         self.transform = True
