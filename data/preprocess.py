@@ -15,8 +15,9 @@ if __name__=='__main__':
     
     # Choice
     # train=True
-    all_classes = True
+    all_classes = False
     longer_resolution = False
+    crop_data = True
     
     
     # Classification using all classes (during revision)
@@ -72,3 +73,40 @@ if __name__=='__main__':
                 meta_dict['1'] = np.array(meta_dict['1'])
                 meta_dict['-1'] = np.array(meta_dict['-1'])
                 np.savez(meta_path, **meta_dict)
+                
+                
+    if crop_data:
+        data_dir = '/SSDb/sung/dataset/dongwoon'
+        tr_dict = dict(np.load(os.path.join(data_dir, 'multi_class', 'train_meta_dict.npz')))
+        val_dict = dict(np.load(os.path.join(data_dir, 'multi_class', 'val_meta_dict.npz')))
+        
+        tr_list = np.concatenate([tr_dict['0'][:,0], tr_dict['1'][:,0], tr_dict['2'][:,0]], axis=0)
+        tr_list = np.unique(tr_list)
+
+        val_list = np.concatenate([val_dict['0'][:,0], val_dict['1'][:,0], val_dict['2'][:,0]], axis=0)
+        val_list = np.unique(val_list)
+        
+        # Crop Train Dataset
+        save_dir = os.path.join(data_dir, 'publication', 'train')
+        for tr_name in tqdm(tr_list):
+            file_name = os.path.join(data_dir, 'train', tr_name)
+            file = dict(np.load(file_name))
+            
+            for ix, file_ix in enumerate(file['label']):
+                audio = file['audio'][(8000 * ix):(8000 * (ix+1))]
+                save_name = os.path.join(save_dir, str(file_ix), '%s_id%04d.npy' %(tr_name.rstrip('.npz'), ix))
+                os.makedirs(os.path.dirname(save_name), exist_ok=True)
+                np.save(save_name, audio)
+                
+        
+        # Crop Valid Dataset
+        save_dir = os.path.join(data_dir, 'publication', 'val')
+        for val_name in tqdm(val_list):
+            file_name = os.path.join(data_dir, 'val', val_name)
+            file = dict(np.load(file_name))
+            
+            for ix, file_ix in enumerate(file['label']):
+                audio = file['audio'][(8000 * ix):(8000 * (ix+1))]
+                save_name = os.path.join(save_dir, str(file_ix), '%s_id%04d.npy' %(val_name.rstrip('.npz'), ix))
+                os.makedirs(os.path.dirname(save_name), exist_ok=True)
+                np.save(save_name, audio)
